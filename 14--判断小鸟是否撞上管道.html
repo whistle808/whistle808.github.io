@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        canvas {
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+<canvas width="800" height="600"></canvas>
+<script src="./js2/sky.js"></script>
+<script src="./js2/bird.js"></script>
+<script src="./js2/land.js"></script>
+<script src="./js2/pipe.js"></script>
+
+<script>
+    var c = document.querySelector("canvas");
+    var ctx = c.getContext("2d");
+
+    /*同时加载多张图片*/
+    function loadImg(arr,callback){
+        var count = 0;
+        /*能够瞬间同时加载所有图片*/
+        var imgList = [];
+        for(var i = 0;i< arr.length;i++){
+            var img = new Image();
+            img.src = "./images/" + arr[i] + ".png";
+            imgList[arr[i]] = img;
+            img.onload = function(){
+                count ++;
+                if(count == arr.length){
+                    callback(imgList);
+                }
+            }
+        }
+    }
+
+    {
+        //起始时间
+        var startT = new Date();
+        //间隔结束时间
+        var endT = new Date();
+        //时间间隔
+        var offsetT = 0;
+
+        /*游戏开始时间*/
+        var gameStart = new Date();
+        /*游戏结束时间*/
+        var gameOver = 0;
+    }
+
+    loadImg(["birds","sky","land","pipe1","pipe2"],function(imgList){
+        var birdImg = imgList["birds"];
+        var skyImg = imgList["sky"];
+        var landImg = imgList["land"];
+        var bottomImg = imgList["pipe1"];
+        var topImg = imgList["pipe2"];
+
+       /*创建天空对象*/
+        var sky1 = new Sky({
+            ctx:ctx,
+            skyImg:skyImg,
+            x:0,
+            y:0
+        })
+        var sky2 = new Sky({
+            ctx:ctx,
+            skyImg:skyImg,
+            x:skyImg.width,
+            y:0
+        })
+        /*创建小鸟对象*/
+        var bird = new Bird({
+            ctx:ctx,
+            birdImg:birdImg,
+            canvasX:100,
+            canvasY:100
+        })
+        /*创建管道*/
+        var pipeArr= [];
+        for(var i = 0 ;i<6;i++){
+            var p = new Pipe({
+                ctx:ctx,
+                topImg:topImg,
+                bottomImg:bottomImg,
+                pipeX:300 + 3 * topImg.width * i,
+            })
+            pipeArr.push(p);
+        }
+        /*创建陆地*/
+        var landArr = [];
+        for(var i = 0;i < 4;i++){
+            var land = new Land({
+                ctx:ctx,
+                landImg:landImg,
+                canvasX:landImg.width * i,
+                canvasY: c.height - landImg.height
+            })
+            landArr.push(land);
+        }
+
+
+        function fly(){
+            /*下落就是在每次调用方法的时候来修改canvasY的值*/
+            startT = new Date();
+            offsetT = startT - endT;
+            endT = startT;
+
+            /*这里要开启新路径，不然之前的路径还会存在，只不过看不到而已*/
+            ctx.beginPath();
+
+            /*绘制天空背景*/
+            sky1.drawSky();
+            sky2.drawSky();
+
+            /*绘制小鸟*/
+            bird.drawBird(offsetT);
+
+            /*绘制管道*/
+            for(var i = 0 ;i<pipeArr.length;i++){
+                pipeArr[i].drawPipe();
+            }
+
+            /*绘制陆地*/
+            for(var i = 0 ;i<landArr.length;i++){
+                landArr[i].drawLand();
+            }
+
+            /*添加文本显示*/
+            gameOver = new Date();
+            var offset = gameOver - gameStart;
+            offset = offset /1000;
+            var hour =Math.floor(offset / 3600);
+            var minute = Math.floor(offset % 3600 / 60);
+            var second = Math.floor(offset % 60);
+            var str = "你已经坚持游戏："+hour+"时"+minute+"分"+second+"秒";
+            ctx.textBaseline = "top";
+            ctx.font = "20px 黑体";
+            ctx.fillText(str,100,0);
+
+            /*判断小鸟是否到达天地*/
+            if(bird.canvasY < 0 || bird.canvasY > c.height - landImg.height - birdImg.height){
+                return;
+            }
+            /*判断小鸟是否撞上了管道*/
+            console.log(bird.canvasY + bird.birdH / 2);
+            if(ctx.isPointInPath(bird.canvasX + bird.birdW / 2,bird.canvasY + bird.birdH / 2)){
+                return;
+            }
+
+
+
+            /*这句代码放在最后。。。。。*/
+            window.requestAnimationFrame(fly);
+        }
+        fly();
+
+        /*添加单击事件，实现小鸟的上跳*/
+        c.onclick = function(){
+            bird.birdSpeed = -0.2;
+        }
+    })
+</script>
+</body>
+</html>
